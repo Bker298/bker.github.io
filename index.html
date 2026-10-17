@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSA // CIPHER TERMINAL</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cairo:wght@400;700;900&display=swap');
+
+  :root{
+    --bg:#050a07;
+    --bg-2:#0a1410;
+    --panel:#0d1a13;
+    --border:#1a3a28;
+    --border-glow:#2dff8a;
+    --text:#c8ffe0;
+    --muted:#4a7a5e;
+    --neon:#2dff8a;
+    --neon-2:#00e5ff;
+    --neon-dim:#1a8a4d;
+    --red:#ff3b5c;
+    --amber:#ffb000;
+    --scan:rgba(45,255,138,.03);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Cairo',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.7;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+  /* Matrix rain canvas */
+  #matrix{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    z-index:0;opacity:.12;pointer-events:none;
+  }
+  /* Scanline overlay */
+  body::before{
+    content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 2px,
+      var(--scan) 2px,
+      var(--scan) 4px
+    );
+    animation:scan 8s linear infinite;
+  }
+  @keyframes scan{
+    0%{background-position:0 0}
+    100%{background-position:0 100vh}
+  }
+  /* Vignette */
+  body::after{
+    content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,.7) 100%);
+  }
+  .container{max-width:1150px;margin:0 auto;padding:0 24px;position:relative;z-index:2}
+  a{color:var(--neon-2);text-decoration:none}
+
+  /* ===== HEADER ===== */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(5,10,7,.85);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+    box-shadow:0 0 20px rgba(45,255,138,.1);
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:1150px;margin:0 auto}
+  .logo{display:flex;align-items:center;gap:12px;font-weight:900;font-size:1.15rem;font-family:'Share Tech Mono',monospace;letter-spacing:2px}
+  .logo .mark{
+    width:40px;height:40px;border-radius:6px;
+    background:var(--panel);border:1px solid var(--border-glow);
+    display:grid;place-items:center;font-weight:900;color:var(--neon);
+    text-shadow:0 0 10px var(--neon);
+    box-shadow:0 0 15px rgba(45,255,138,.3),inset 0 0 10px rgba(45,255,138,.1);
+    animation:pulse-glow 3s infinite;
+  }
+  @keyframes pulse-glow{
+    0%,100%{box-shadow:0 0 15px rgba(45,255,138,.3),inset 0 0 10px rgba(45,255,138,.1)}
+    50%{box-shadow:0 0 30px rgba(45,255,138,.6),inset 0 0 15px rgba(45,255,138,.2)}
+  }
+  .nav-links{display:flex;gap:22px;font-family:'Share Tech Mono',monospace;font-size:.85rem}
+  .nav-links a{color:var(--muted);transition:all .2s;padding:4px 8px;border:1px solid transparent;border-radius:4px}
+  .nav-links a:hover{color:var(--neon);border-color:var(--border-glow);text-shadow:0 0 8px var(--neon)}
+  .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px var(--neon);margin-left:6px;animation:blink 1.5s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ===== HERO ===== */
+  .hero{padding:80px 0 50px;text-align:center;position:relative}
+  .ascii-art{
+    font-family:'Share Tech Mono',monospace;color:var(--neon);
+    text-shadow:0 0 15px rgba(45,255,138,.6);
+    font-size:.55rem;line-height:1.1;white-space:pre;
+    margin:0 auto 30px;max-width:100%;overflow-x:auto;
+  }
+  @media(min-width:600px){.ascii-art{font-size:.8rem}}
+  .tag{
+    display:inline-block;padding:6px 18px;border-radius:4px;
+    background:rgba(45,255,138,.08);border:1px solid var(--border-glow);
+    color:var(--neon);font-family:'Share Tech Mono',monospace;font-size:.8rem;
+    margin-bottom:24px;letter-spacing:1px;
+  }
+  h1{
+    font-family:'Share Tech Mono',monospace;
+    font-size:clamp(2rem,6vw,3.8rem);font-weight:400;line-height:1.1;
+    color:var(--neon);
+    text-shadow:0 0 20px rgba(45,255,138,.5),0 0 40px rgba(45,255,138,.2);
+    margin-bottom:18px;letter-spacing:3px;
+  }
+  h1 .cursor{display:inline-block;width:14px;height:1em;background:var(--neon);animation:blink .8s infinite;vertical-align:text-bottom;margin-right:4px;box-shadow:0 0 10px var(--neon)}
+  .hero p{max-width:680px;margin:0 auto 28px;font-size:1.1rem;color:var(--muted)}
+  .hero p .accent{color:var(--neon-2)}
+  .cta-row{display:flex;gap:14px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:13px 28px;border-radius:6px;font-weight:700;font-size:1rem;
+    border:1px solid var(--border-glow);cursor:pointer;transition:all .2s;
+    font-family:'Share Tech Mono',monospace;letter-spacing:1px;
+    background:var(--panel);color:var(--neon);
+    text-transform:uppercase;
+  }
+  .btn:hover{background:rgba(45,255,138,.12);box-shadow:0 0 20px rgba(45,255,138,.35);transform:translateY(-2px)}
+  .btn-cyan{border-color:var(--neon-2);color:var(--neon-2);text-shadow:0 0 8px rgba(0,229,255,.4)}
+  .btn-cyan:hover{background:rgba(0,229,255,.1);box-shadow:0 0 20px rgba(0,229,255,.3)}
+
+  /* ===== SECTIONS ===== */
+  section{padding:60px 0;position:relative}
+  .section-title{
+    font-family:'Share Tech Mono',monospace;
+    font-size:1.8rem;font-weight:400;margin-bottom:10px;color:var(--neon);
+    text-shadow:0 0 12px rgba(45,255,138,.3);
+    border-right:3px solid var(--neon);padding-right:14px;display:inline-block;
+  }
+  .section-title::before{content:'> ';color:var(--muted)}
+  .section-sub{color:var(--muted);margin-bottom:36px;font-size:1rem}
+  .grid{display:grid;gap:18px}
+  .grid-3{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .grid-2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+
+  /* ===== CARDS ===== */
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);border-radius:8px;
+    padding:26px;position:relative;overflow:hidden;
+    transition:all .3s;
+  }
+  .card::before{
+    content:'';position:absolute;top:0;left:0;width:100%;height:2px;
+    background:linear-gradient(90deg,transparent,var(--neon),transparent);
+    opacity:.6;
+  }
+  .card:hover{border-color:var(--border-glow);box-shadow:0 0 25px rgba(45,255,138,.15)}
+  .card .corner{
+    position:absolute;width:12px;height:12px;border:1px solid var(--neon);opacity:.5;
+  }
+  .card .corner.tl{top:6px;left:6px;border-right:none;border-bottom:none}
+  .card .corner.tr{top:6px;right:6px;border-left:none;border-bottom:none}
+  .card .corner.bl{bottom:6px;left:6px;border-right:none;border-top:none}
+  .card .corner.br{bottom:6px;right:6px;border-left:none;border-top:none}
+  .icon{
+    font-size:1.8rem;margin-bottom:14px;display:block;
+    filter:drop-shadow(0 0 8px var(--neon));
+  }
+  .card h3{
+    font-family:'Share Tech Mono',monospace;font-size:1.1rem;margin-bottom:10px;
+    color:var(--neon);font-weight:400;letter-spacing:1px;
+  }
+  .card p{color:var(--muted);font-size:.92rem}
+
+  /* ===== STEPS ===== */
+  .steps{display:grid;gap:16px}
+  .step{
+    background:var(--panel);border:1px solid var(--border);border-radius:8px;
+    padding:22px 24px;display:flex;gap:18px;align-items:flex-start;position:relative;
+    transition:border-color .3s;
+  }
+  .step:hover{border-color:var(--border-glow)}
+  .step-num{
+    min-width:44px;height:44px;border-radius:6px;
+    background:rgba(45,255,138,.1);border:1px solid var(--border-glow);
+    color:var(--neon);font-family:'Share Tech Mono',monospace;font-weight:700;
+    display:grid;place-items:center;font-size:1.2rem;
+    text-shadow:0 0 8px var(--neon);
+  }
+  .step h4{margin-bottom:6px;font-size:1.05rem;color:var(--neon);font-family:'Share Tech Mono',monospace;font-weight:400}
+  .step p{color:var(--muted);font-size:.92rem}
+  .step code{
+    display:block;margin-top:12px;padding:12px 16px;
+    background:#06120c;border:1px solid var(--border);border-radius:4px;
+    font-family:'Share Tech Mono',monospace;font-size:.82rem;color:var(--neon-2);
+    direction:ltr;text-align:left;overflow-x:auto;
+    text-shadow:0 0 6px rgba(0,229,255,.3);
+  }
+
+  /* ===== DEMO (TERMINAL) ===== */
+  .terminal{
+    background:#06120c;border:1px solid var(--border-glow);border-radius:10px;
+    box-shadow:0 0 40px rgba(45,255,138,.12),inset 0 0 30px rgba(0,0,0,.5);
+    overflow:hidden;
+  }
+  .terminal-bar{
+    background:#0a1a12;padding:10px 16px;display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid var(--border);
+  }
+  .term-dot{width:12px;height:12px;border-radius:50%}
+  .term-dot.r{background:#ff5f56}
+  .term-dot.y{background:#ffbd2e}
+  .term-dot.g{background:var(--neon);box-shadow:0 0 8px var(--neon)}
+  .term-title{flex:1;text-align:center;font-family:'Share Tech Mono',monospace;font-size:.8rem;color:var(--muted);letter-spacing:1px}
+  .terminal-body{padding:28px}
+  .keys-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .key-box{
+    background:#020806;border:1px solid var(--border);border-radius:6px;
+    padding:14px;font-family:'Share Tech Mono',monospace;font-size:.78rem;
+    color:var(--neon);direction:ltr;text-align:left;word-break:break-all;min-height:60px;
+    text-shadow:0 0 6px rgba(45,255,138,.4);
+    position:relative;
+  }
+  .key-box.priv{color:var(--red);text-shadow:0 0 6px rgba(255,59,92,.4)}
+  .key-label{
+    font-size:.72rem;color:var(--muted);margin-bottom:8px;font-weight:700;
+    font-family:'Share Tech Mono',monospace;letter-spacing:1px;text-transform:uppercase;
+  }
+  .key-label.priv{color:var(--red)}
+  .demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+  @media(max-width:820px){.demo-grid{grid-template-columns:1fr}}
+  .field label{
+    display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px;
+    font-family:'Share Tech Mono',monospace;text-transform:uppercase;letter-spacing:1px;
+  }
+  .field input,.field select,.field textarea{
+    width:100%;padding:11px 14px;border-radius:6px;
+    background:#020806;border:1px solid var(--border);color:var(--neon);
+    font-family:'Share Tech Mono',monospace;font-size:.9rem;
+    text-shadow:0 0 5px rgba(45,255,138,.3);resize:vertical;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{
+    outline:none;border-color:var(--neon);box-shadow:0 0 12px rgba(45,255,138,.3);
+  }
+  .field textarea{direction:ltr;text-align:left;line-height:1.6}
+  .mode-btn{
+    padding:9px 20px;border-radius:6px;cursor:pointer;
+    background:transparent;border:1px solid var(--border);color:var(--muted);
+    font-family:'Share Tech Mono',monospace;font-size:.85rem;letter-spacing:1px;
+    transition:all .2s;
+  }
+  .mode-btn:hover{color:var(--neon);border-color:var(--border-glow)}
+  .mode-btn.active{
+    background:rgba(45,255,138,.12);border-color:var(--neon);color:var(--neon);
+    text-shadow:0 0 8px var(--neon);box-shadow:0 0 12px rgba(45,255,138,.2);
+  }
+  .hidden{display:none!important}
+  .out{
+    margin-top:14px;padding:14px;border-radius:6px;
+    background:#020806;border:1px solid var(--border);
+    font-family:'Share Tech Mono',monospace;font-size:.88rem;word-break:break-word;
+    direction:ltr;text-align:left;min-height:52px;color:var(--text);
+  }
+  .out .lbl{
+    font-family:'Share Tech Mono',monospace;color:var(--muted);font-size:.72rem;
+    display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;
+  }
+  .badge{
+    display:inline-block;padding:4px 12px;border-radius:4px;font-size:.82rem;
+    font-family:'Share Tech Mono',monospace;font-weight:700;letter-spacing:1px;
+  }
+  .badge-green{background:rgba(45,255,138,.12);color:var(--neon);border:1px solid var(--neon);text-shadow:0 0 6px var(--neon)}
+  .badge-red{background:rgba(255,59,92,.12);color:var(--red);border:1px solid var(--red)}
+  .info{
+    margin-top:18px;padding:14px 18px;border-radius:6px;
+    background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.3);
+    font-size:.88rem;color:var(--neon-2);font-family:'Share Tech Mono',monospace;
+  }
+  .info.ok{background:rgba(45,255,138,.06);border-color:rgba(45,255,138,.4);color:var(--neon)}
+  .info.err{background:rgba(255,59,92,.08);border-color:rgba(255,59,92,.4);color:var(--red)}
+  .info.warn{background:rgba(255,176,0,.08);border-color:rgba(255,176,0,.4);color:var(--amber)}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+  /* ===== FORMULA ===== */
+  .formula{
+    background:#020806;border:1px solid var(--border);border-radius:6px;
+    padding:18px 22px;font-family:'Share Tech Mono',monospace;
+    font-size:1.05rem;color:var(--neon-2);direction:ltr;text-align:center;
+    margin:14px 0;overflow-x:auto;
+    text-shadow:0 0 8px rgba(0,229,255,.4);
+  }
+  .note{color:var(--muted);font-size:.88rem;font-family:'Share Tech Mono',monospace}
+  .note::before{content:'// '}
+
+  /* ===== FOOTER ===== */
+  footer{
+    border-top:1px solid var(--border);padding:36px 0;text-align:center;color:var(--muted);
+    font-family:'Share Tech Mono',monospace;font-size:.82rem;margin-top:40px;
+    position:relative;z-index:2;
+  }
+  footer .heart{color:var(--red);animation:blink 2s infinite}
+
+  .fade-in{animation:fade .6s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--neon-dim)}
+
+  select option{background:#0a1410;color:var(--neon)}
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+
+<header>
+  <div class="nav">
+    <div class="logo"><div class="mark">R</div><span>RSA//CIPHER</span></div>
+    <nav class="nav-links">
+      <a href="#about">[01] RSA</a>
+      <a href="#how">[02] FLOW</a>
+      <a href="#demo">[03] SHELL</a>
+      <a href="#math">[04] MATH</a>
+      <a href="#uses">[05] USES</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <pre class="ascii-art">
+ ██████╗ ███████╗ ██████╗    ██████╗██╗██████╗ ██╗  ██╗███████╗██████╗
+ ██╔══██╗██╔════╝██╔════╝   ██╔════╝██║██╔══██╗██║  ██║██╔════╝██╔══██╗
+ ██████╔╝███████╗██║        ██║     ██║██████╔╝███████║█████╗  ██████╔╝
+ ██╔══██╗╚════██║██║        ██║     ██║██╔═══╝ ██╔══██║██╔══╝  ██╔══██╗
+ ██║  ██║███████║╚██████╗   ╚██████╗██║██║     ██║  ██║███████╗██║  ██║
+ ╚═╝  ╚═╝╚══════╝ ╚═════╝    ╚═════╝╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
+    </pre>
+    <span class="tag">[ SYSTEM ONLINE ] <span class="status-dot"></span> ENCRYPTION ENGINE READY</span>
+    <h1><span class="cursor"></span>RSA CIPHER</h1>
+    <p>واحد من أهم أنظمة <span class="accent">التشفير غير المتماثل</span> في التاريخ. تعلّم كيف تحمي RSA بياناتك على الإنترنت، وجرّب التشفير وفك التشفير مباشرة في الطرفية.</p>
+    <div class="cta-row">
+      <a href="#demo" class="btn">▶ launch shell</a>
+      <a href="#about" class="btn btn-cyan">learn more</a>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="container">
+    <h2 class="section-title">what_is_rsa.sys</h2>
+    <p class="section-sub">نظام تشفير غير متماثل يعتمد على مفتاحين: عام للخفاء، وخاص للكشف.</p>
+    <div class="grid grid-3">
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">🔐</div>
+        <h3>// dual_keys</h3>
+        <p>المفتاح العام يُوزّع للجميع لتشفير الرسائل، والمفتاح الخاص يبقى سرّاً لفك تشفيرها فقط.</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">🔢</div>
+        <h3>// prime_factors</h3>
+        <p>يعتمد أمنه على صعوبة تحليل الأعداد الكبيرة إلى عواملها الأولية (مسألة عاملة الأعداد).</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">📜</div>
+        <h3>// est_1977</h3>
+        <p>ابتكره ريفست، شامير، أدلمان في MIT عام 1977. لا يزال أساساً لأمن الإنترنت حتى اليوم.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section id="how">
+  <div class="container">
+    <h2 class="section-title">encryption_flow.exe</h2>
+    <p class="section-sub">ثلاث مراحل أساسية: توليد المفاتيح، التشفير، وفك التشفير.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <h4>key_generation()</h4>
+          <p>نختار عددين أوليين كبيرين p و q، ونحسب n = p × q، ثم نختار الأس العام e والأس الخاص d بحيث يكون (e × d − 1) قابلاً للقسمة على دالة أويلر φ(n).</p>
+          <code>n = p * q
+phi(n) = (p-1) * (q-1)
+1 < e < phi(n), gcd(e, phi) = 1
+d = e^(-1) mod phi(n)</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <h4>encrypt(m)</h4>
+          <p>لإرسال رسالة رقمية m، يرفعها المرسل للقوة e ويأخذ الباقي من قسمة n. النتيجة هي النص المشفر c.</p>
+          <code>c = m^e mod n</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <h4>decrypt(c)</h4>
+          <p>يستقبل المستلم c ويستخدم المفتاح الخاص d لاستعادة الرسالة الأصلية برفعها للقوة d وأخذ الباقي من n.</p>
+          <code>m = c^d mod n</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section id="demo">
+  <div class="container">
+    <h2 class="section-title">interactive_shell.sh</h2>
+    <p class="section-sub">جرّب RSA بنفسك باستخدام أعداد أولية صغيرة لفهم العملية خطوة بخطوة.</p>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+        <span class="term-title">rsa@cipher:~/encrypt$</span>
+      </div>
+      <div class="terminal-body">
+        <div class="field" style="margin-bottom:18px">
+          <label>// select_primes(p, q)</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <select id="pSel"></select>
+            <select id="qSel"></select>
+          </div>
+        </div>
+
+        <div class="keys-row">
+          <div>
+            <div class="key-label">🔓 public_key (e, n)</div>
+            <div class="key-box" id="pubKey">—</div>
+          </div>
+          <div>
+            <div class="key-label priv">🔑 private_key (d, n) [RESTRICTED]</div>
+            <div class="key-box priv" id="privKey">—</div>
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin:22px 0 4px">
+          <button class="mode-btn active" id="modeNum">🔢 أرقام</button>
+          <button class="mode-btn" id="modeText">🔤 نص</button>
+        </div>
+
+        <!-- NUMBER MODE -->
+        <div id="numMode">
+          <div class="demo-grid">
+            <div>
+              <div class="field" style="margin-bottom:14px">
+                <label>// plaintext (m) -- integer < n</label>
+                <input type="number" id="msgIn" placeholder="e.g. 42" min="1">
+              </div>
+              <div class="btn-row">
+                <button class="btn" id="encBtn">encrypt()</button>
+              </div>
+              <div class="out" id="encOut"><span class="lbl">ciphertext (c):</span>—</div>
+            </div>
+            <div>
+              <div class="field" style="margin-bottom:14px">
+                <label>// ciphertext (c)</label>
+                <input type="number" id="cIn" placeholder="enter c value">
+              </div>
+              <div class="btn-row">
+                <button class="btn btn-cyan" id="decBtn">decrypt()</button>
+              </div>
+              <div class="out" id="decOut"><span class="lbl">plaintext (m):</span>—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TEXT MODE -->
+        <div id="textMode" class="hidden">
+          <div class="field" style="margin-bottom:14px">
+            <label>// message_text -- نص عربي أو إنجليزي</label>
+            <input type="text" id="txtIn" placeholder="مثال: مرحبا RSA">
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="txtEncBtn">encrypt_text()</button>
+          </div>
+          <div class="out" id="txtEncOut"><span class="lbl">ciphertext array (c[]):</span>—</div>
+          <div class="field" style="margin:14px 0">
+            <label>// ciphertext array (c[]) -- أرقام مفصولة بفواصل</label>
+            <textarea id="txtCIn" rows="2" placeholder="مثال: 1459, 3344, 2201 ..."></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-cyan" id="txtDecBtn">decrypt_text()</button>
+          </div>
+          <div class="out" id="txtDecOut"><span class="lbl">plaintext (m):</span>—</div>
+        </div>
+
+        <div class="info" id="infoBox">
+          [INFO] اختر العددين الأوليين ثم اضغط encrypt() لرؤية كيف تُحوّل الرسالة رقماً صعب الفك بدون المفتاح الخاص.
+        </div>
+
+        <div class="btn-row" style="margin-top:18px">
+          <button class="btn btn-cyan" id="regenBtn">↻ regenerate_keys()</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MATH -->
+<section id="math">
+  <div class="container">
+    <h2 class="section-title">crypto_math.mod</h2>
+    <p class="section-sub">لماذا يعود (cᵈ) mod n إلى الرسالة الأصلية m؟ الجواب في نظرية فيرما الصغيرة ودالة أويلر.</p>
+    <div class="grid grid-2">
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">∑</div>
+        <h3>// why_it_works</h3>
+        <p>لأننا اخترنا d بحيث e·d ≡ 1 mod φ(n). إذن <code style="color:var(--neon-2)">cᵈ = (mᵉ)ᵈ = m^(ed) = m^(1+k·φ) = m · (m^φ)^k</code>. وبموجب نظرية أويلر، m^φ(n) ≡ 1 mod n، فتصبح النتيجة m.</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">🛡️</div>
+        <h3>// unbreakable</h3>
+        <p>لإيجاد d من المفتاح العام (e,n) يجب معرفة φ(n) = (p−1)(q−1)، ما يعني تحليل n إلى عوامليه p و q. تحليل أعداد تصل إلى 617 رقمًا (2048 بت) يستغرق آلة حاسوبية آلاف السنين.</p>
+      </div>
+    </div>
+    <div class="formula">c = m^e mod n  ==>  m = c^d mod n</div>
+    <p class="note">في التطبيقات الحقيقية تستخدم أعداد أولية ضخمة (2048 بت أو أكثر)، وهنا يعرض المثال أعداداً صغيرة لأغراض التعليم فقط.</p>
+  </div>
+</section>
+
+<!-- USES -->
+<section id="uses">
+  <div class="container">
+    <h2 class="section-title">real_world_apps.db</h2>
+    <p class="section-sub">تقريباً في كل تفاعل آمن على الإنترنت.</p>
+    <div class="grid grid-3">
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">🌐</div>
+        <h3>// https_tls</h3>
+        <p>تبادل المفاتيح وتوثيق الهوية عند زيارة مواقع الويب الآمنة.</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">✉️</div>
+        <h3>// email_enc</h3>
+        <p>توقيع وتشفير الرسائل عبر بروتوكولات مثل PGP و S/MIME.</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">💳</div>
+        <h3>// e_payment</h3>
+        <p>حماية بيانات البطاقات والمعاملات المصرفية عبر الإنترنت.</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">✍️</div>
+        <h3>// digital_sign</h3>
+        <p>التحقق من مصدر الرسالة وسلامتها دون تدخّل.</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">🪪</div>
+        <h3>// ca_certs</h3>
+        <p>إصدار والتثبت من شهادات الويب (CA Certificates).</p>
+      </div>
+      <div class="card">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="icon">🔗</div>
+        <h3>// blockchain</h3>
+        <p>أساس التوقيعات في العديد من سلاسل الكتل (Blockchain).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    [ BUILD v2.0 ] <span class="heart">♥</span> cipher terminal · educational purpose only · no real keys generated
+  </div>
+</footer>
+
+<script>
+// ============ MATRIX RAIN ============
+(function(){
+  const canvas=document.getElementById('matrix');
+  const ctx=canvas.getContext('2d');
+  let w,h,cols,falls;
+  const chars='アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF<>{}[]/\\=+*'.split('');
+  function resize(){
+    w=canvas.width=window.innerWidth;
+    h=canvas.height=window.innerHeight;
+    cols=Math.floor(w/16);
+    falls=Array(cols).fill(1).map(()=>Math.random()*-50);
+  }
+  window.addEventListener('resize',resize);resize();
+  function draw(){
+    ctx.fillStyle='rgba(5,10,7,.08)';
+    ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#2dff8a';
+    ctx.font='14px monospace';
+    for(let i=0;i<cols;i++){
+      const ch=chars[Math.floor(Math.random()*chars.length)];
+      ctx.fillText(ch,i*16,falls[i]*16);
+      if(falls[i]*16>h && Math.random()>.975) falls[i]=0;
+      falls[i]++;
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ============ RSA ENGINE ============
+const smallPrimes = [61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251];
+const pSel = document.getElementById('pSel');
+const qSel = document.getElementById('qSel');
+smallPrimes.forEach(p=>{pSel.add(new Option(p,p));qSel.add(new Option(p,p));});
+
+let state = {p:0n,q:0n,n:0n,phi:0n,e:0n,d:0n};
+
+function gcd(a,b){while(b){[a,b]=[b,a%b]}return a}
+function modInverse(e,phi){
+  let [old_r,r]=[e,phi];let [old_s,s]=[1n,0n];
+  while(r!==0n){const q=old_r/r;[old_r,r]=[r,old_r-q*r];[old_s,s]=[s,old_s-q*s];}
+  return ((old_s%phi)+phi)%phi;
+}
+function pickE(phi){
+  const c=[65537n,257n,17n,5n,3n];
+  for(const e of c) if(e<phi && gcd(e,phi)===1n) return e;
+  for(let e=3n;e<phi;e+=2n) if(gcd(e,phi)===1n) return e;
+  return 3n;
+}
+function generateKeys(p,q){
+  state.p=BigInt(p);state.q=BigInt(q);
+  state.n=state.p*state.q;state.phi=(state.p-1n)*(state.q-1n);
+  state.e=pickE(state.phi);state.d=modInverse(state.e,state.phi);
+  renderKeys();
+  document.getElementById('msgIn').max=Number(state.n-1n);
+}
+function renderKeys(){
+  document.getElementById('pubKey').textContent=`e = ${state.e},  n = ${state.n}`;
+  document.getElementById('privKey').textContent=`d = ${state.d},  n = ${state.n}`;
+}
+function powerMod(base,exp,mod){
+  let result=1n;base=base%mod;
+  while(exp>0n){if(exp%2n===1n)result=(result*base)%mod;exp=exp/2n;base=(base*base)%mod;}
+  return result;
+}
+
+pSel.value=61;qSel.value=67;
+if(!qSel.value)qSel.value=smallPrimes[1];
+generateKeys(pSel.value,qSel.value);
+
+[pSel,qSel].forEach(s=>s.addEventListener('change',()=>{
+  if(pSel.value===qSel.value) showInfo('[WARN] اختر عددين مختلفين للحصول على نتيجة أوضح.','warn');
+  generateKeys(pSel.value,qSel.value);
+}));
+
+document.getElementById('encBtn').addEventListener('click',()=>{
+  const raw=document.getElementById('msgIn').value.trim();
+  if(raw===''){showInfo('[ERROR] أدخل عدداً صحيحاً للنص الأصلي m أولاً.','err');return;}
+  const m=BigInt(raw);
+  if(m<=0n||m>=state.n){showInfo(`[ERROR] يجب أن يكون 0 < m < n (n=${state.n}).`,'err');return;}
+  const c=powerMod(m,state.e,state.n);
+  document.getElementById('encOut').innerHTML=`<span class="lbl">ciphertext (c):</span><span class="badge badge-green">c = ${c}</span>`;
+  document.getElementById('cIn').value=String(c);
+  showInfo(`[OK] encrypt: ${m}^${state.e} mod ${state.n} = ${c}`, 'ok');
+});
+
+document.getElementById('decBtn').addEventListener('click',()=>{
+  const raw=document.getElementById('cIn').value.trim();
+  if(raw===''){showInfo('[ERROR] أدخل عدداً للنص المشفر c أولاً.','err');return;}
+  const c=BigInt(raw);
+  if(c<0n||c>=state.n){showInfo(`[ERROR] يجب أن يكون 0 ≤ c < n (n=${state.n}).`,'err');return;}
+  const m=powerMod(c,state.d,state.n);
+  document.getElementById('decOut').innerHTML=`<span class="lbl">plaintext (m):</span><span class="badge badge-green">m = ${m}</span>`;
+  showInfo(`[OK] decrypt: ${c}^${state.d} mod ${state.n} = ${m}`, 'ok');
+});
+
+document.getElementById('regenBtn').addEventListener('click',()=>{
+  let p,q;do{p=smallPrimes[Math.floor(Math.random()*smallPrimes.length)];q=smallPrimes[Math.floor(Math.random()*smallPrimes.length)];}while(p===q);
+  pSel.value=p;qSel.value=q;generateKeys(p,q);
+  showInfo('[OK] regenerate_keys() -- مفاتيح جديدة عشوائياً.','ok');
+});
+
+// ============ MODE SWITCH ============
+const modeNum=document.getElementById('modeNum');
+const modeText=document.getElementById('modeText');
+const numMode=document.getElementById('numMode');
+const textMode=document.getElementById('textMode');
+function setMode(m){
+  if(m==='num'){
+    modeNum.classList.add('active');modeText.classList.remove('active');
+    numMode.classList.remove('hidden');textMode.classList.add('hidden');
+    showInfo('[INFO] وضع الأرقام: شفّر عدداً صحيحاً أصغر من n.','');
+  }else{
+    modeText.classList.add('active');modeNum.classList.remove('active');
+    textMode.classList.remove('hidden');numMode.classList.add('hidden');
+    showInfo('[INFO] وضع النص: اكتب كلمة أو جملة وسيُشفّر كل حرف حسب رمزه الرقمي.','');
+  }
+}
+modeNum.addEventListener('click',()=>setMode('num'));
+modeText.addEventListener('click',()=>setMode('text'));
+
+// ============ TEXT ENCRYPTION ============
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+document.getElementById('txtEncBtn').addEventListener('click',()=>{
+  const text=document.getElementById('txtIn').value;
+  if(text.length===0){showInfo('[ERROR] اكتب نصاً أولاً قبل التشفير.','err');return;}
+  const chars=[...text];
+  const codes=chars.map(ch=>ch.codePointAt(0));
+  const tooBig=codes.find(c=>BigInt(c)>=state.n);
+  if(tooBig!==undefined){
+    showInfo(`[ERROR] رمز الحرف (${tooBig}) أكبر من أو يساوي n (${state.n}). اختر عددين أوليين أكبر أو نصاً أبسط.`,'err');
+    return;
+  }
+  const cs=codes.map(c=>powerMod(BigInt(c),state.e,state.n));
+  document.getElementById('txtEncOut').innerHTML=`<span class="lbl">ciphertext array (c[]):</span><span class="badge badge-green">${cs.join(', ')}</span>`;
+  document.getElementById('txtCIn').value=cs.join(', ');
+  showInfo(`[OK] تم تشفير "${text}" (${chars.length} حرفاً) بنجاح. انسخ الأرقام لفك التشفير.`,'ok');
+});
+
+document.getElementById('txtDecBtn').addEventListener('click',()=>{
+  const raw=document.getElementById('txtCIn').value.trim();
+  if(raw===''){showInfo('[ERROR] أدخل مصفوفة الأرقام المشفرة أولاً.','err');return;}
+  const parts=raw.split(/[\s,]+/).filter(s=>s.length>0);
+  if(!parts.every(s=>/^\d+$/.test(s))){showInfo('[ERROR] تأكد أن كل القيم أرقام صحيحة مفصولة بفواصل.','err');return;}
+  try{
+    const ms=parts.map(s=>powerMod(BigInt(s),state.d,state.n));
+    const text=String.fromCodePoint(...ms.map(Number));
+    document.getElementById('txtDecOut').innerHTML=`<span class="lbl">plaintext (m):</span><span class="badge badge-green">${escapeHtml(text)}</span>`;
+    showInfo(`[OK] تم فك التشفير بنجاح إلى نص من ${parts.length} حرفاً.`,'ok');
+  }catch(e){
+    showInfo('[ERROR] فشل فك التشفير. تأكد أن الأرقام مشفّرة بنفس المفاتيح الحالية.','err');
+  }
+});
+
+function showInfo(text,type){
+  const box=document.getElementById('infoBox');
+  box.textContent=text;
+  box.className='info '+(type||'');
+  box.classList.remove('fade-in');void box.offsetWidth;box.classList.add('fade-in');
+}
+
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('fade-in');io.unobserve(e.target);}});},{threshold:.1});
+document.querySelectorAll('.card,.step').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
